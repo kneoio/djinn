@@ -47,7 +47,6 @@ public class RadioStreamSupplier extends StreamSupplier {
     private final PromptService promptService;
     private final DraftFactory draftFactory;
     private final SceneService sceneService;
-    private final SoundFragmentService soundFragmentService;
     private final JinglePlaybackHandler jinglePlaybackHandler;
 
     @Inject
@@ -55,7 +54,6 @@ public class RadioStreamSupplier extends StreamSupplier {
         this.promptService = promptService;
         this.draftFactory = draftFactory;
         this.sceneService = sceneService;
-        this.soundFragmentService = soundFragmentService;
         this.jinglePlaybackHandler = jinglePlaybackHandler;
     }
 
@@ -100,14 +98,15 @@ public class RadioStreamSupplier extends StreamSupplier {
 
         if (scheduledSongs.isEmpty()) {
             if (activeScene.getSourcing() == WayOfSourcing.GENERATED) {
-                songsUni = generateContentForScene(
+              /*  songsUni = generateContentForScene(
                     activeScene,
                     stream.getMasterBrand().getId(),
                     soundFragmentService,
                     agent,
                     stream,
                     broadcastingLanguage
-                );
+                );*/
+                songsUni = Uni.createFrom().item(null);
             } else {
                 messageSink.add(
                         stream.getSlugName(),

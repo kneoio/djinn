@@ -9,14 +9,12 @@ import com.semantyca.djinn.repository.soundfragment.SoundFragmentRepository;
 import com.semantyca.djinn.service.AiAgentService;
 import com.semantyca.djinn.service.manipulation.FFmpegProvider;
 import com.semantyca.djinn.service.manipulation.mixing.AudioConcatenator;
-import com.semantyca.djinn.service.manipulation.mixing.ConcatenationType;
 import com.semantyca.djinn.service.manipulation.mixing.MergingType;
 import com.semantyca.djinn.service.soundfragment.SoundFragmentService;
 import com.semantyca.mixpla.model.Scene;
 import com.semantyca.mixpla.model.cnst.PlaylistItemType;
 import com.semantyca.mixpla.model.soundfragment.SoundFragment;
 import com.semantyca.mixpla.model.stream.IStream;
-import com.semantyca.mixpla.service.exceptions.AudioMergeException;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -24,7 +22,6 @@ import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -107,7 +104,7 @@ public class JinglePlaybackHandler {
                             soundFragments.put("song2", selectedSong.getId());
                             queueDTO.setSoundFragments(soundFragments);
 
-                            concatenate(stream, queueDTO, "jingle + song");
+                           // concatenate(stream, queueDTO, "jingle + song");
                         },
                         failure -> LOGGER.error("Station '{}': Failed to fetch jingles: {}",
                                 stream.getSlugName(), failure.getMessage(), failure)
@@ -151,14 +148,14 @@ public class JinglePlaybackHandler {
                             soundFragments.put("song2", secondSong.getId());
                             queueDTO.setSoundFragments(soundFragments);
 
-                            concatenate(stream, queueDTO, "song + crossfade + song");
+                           // concatenate(stream, queueDTO, "song + crossfade + song");
                         },
                         failure -> LOGGER.error("Station '{}': Failed to process songs: {}",
                                 stream.getSlugName(), failure.getMessage(), failure)
                 );
     }
 
-    private void concatenate(IStream stream, AddToQueueDTO queueDTO, String type) {
+ /*   private void concatenate(IStream stream, AddToQueueDTO queueDTO, String type) {
         try {
             AudioMixingHandler handler = new AudioMixingHandler(
                     djinnConfig,
@@ -180,5 +177,5 @@ public class JinglePlaybackHandler {
             LOGGER.error("Station '{}': Failed to create AudioMixingHandler: {}",
                     stream.getSlugName(), e.getMessage(), e);
         }
-    }
+    }*/
 }

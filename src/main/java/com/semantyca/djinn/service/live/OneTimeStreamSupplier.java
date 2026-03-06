@@ -133,14 +133,15 @@ public class OneTimeStreamSupplier extends StreamSupplier {
 
             songsUni = Uni.createFrom().item(pickedSongs);
         } else {
-            songsUni = generateContentForScene(
+          /*  songsUni = generateContentForScene(
                     activeEntry,
                     stream.getMasterBrand().getId(),
                     soundFragmentService,
                     agent,
                     stream,
                     LanguageTag.EN_US
-            );
+            );*/
+            songsUni = Uni.createFrom().item(null);
         }
 
         return songsUni.flatMap(songs -> {

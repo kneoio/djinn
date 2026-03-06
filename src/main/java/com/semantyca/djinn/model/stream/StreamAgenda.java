@@ -19,21 +19,4 @@ public class StreamAgenda {
     public void addScene(LiveScene entry) {
         this.liveScenes.add(entry);
     }
-
-    public int getTotalScenes() {
-        return liveScenes.size();
-    }
-
-    public int getTotalSongs() {
-        return liveScenes.stream()
-                .mapToInt(s -> s.getSongs().size())
-                .sum();
-    }
-
-    public LocalDateTime getEstimatedEndTime() {
-        if (liveScenes.isEmpty()) {
-            return createdAt;
-        }
-        return liveScenes.getLast().getScheduledEndTime();
-    }
 }
