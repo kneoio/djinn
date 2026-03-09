@@ -1,5 +1,6 @@
 package com.semantyca.djinn.service.stream;
 
+import com.semantyca.djinn.model.stream.ILiveAgenda;
 import com.semantyca.djinn.model.stream.LiveScene;
 import com.semantyca.djinn.model.stream.PendingSongEntry;
 import com.semantyca.djinn.model.stream.StreamAgenda;
@@ -10,8 +11,8 @@ import com.semantyca.mixpla.model.PlaylistRequest;
 import com.semantyca.mixpla.model.Scene;
 import com.semantyca.mixpla.model.Script;
 import com.semantyca.mixpla.model.brand.Brand;
-import com.semantyca.mixpla.model.brand.BrandScriptEntry;
 import com.semantyca.mixpla.model.cnst.PlaylistItemType;
+import com.semantyca.mixpla.model.cnst.StreamStatus;
 import com.semantyca.mixpla.model.cnst.WayOfSourcing;
 import com.semantyca.mixpla.model.soundfragment.SoundFragment;
 import io.kneo.core.model.user.IUser;
@@ -47,30 +48,24 @@ public class StreamAgendaService {
     @Inject
     SceneService sceneService;
 
-    @Inject
-    StreamAgendaManager agendaManager;
+    private final BrandPool brandPool;
 
-    public Uni<StreamAgenda> buildRadioStreamAgenda(String slugName, IUser user) {
-        return brandService.getBySlugName(slugName)
-                .chain(brand -> {
-                    if (brand.getScripts() == null || brand.getScripts().isEmpty()) {
-                        return Uni.createFrom().failure(
-                                new IllegalStateException("Brand has no scripts configured")
-                        );
-                    }
-                    BrandScriptEntry firstScript = brand.getScripts().getFirst();
-                    UUID scriptId = firstScript.getScriptId();
-                    LOGGER.infof("Using first script '{}' for brand '{}'", scriptId, brand.getSlugName());
-                    return buildRadioStreamAgenda(brand.getId(), scriptId, user)
-                            .onItem().invoke(agenda -> {
-                                agenda.setTimeZone(brand.getTimeZone());
-                                agendaManager.register(slugName, scriptId, agenda);
-                                LOGGER.infof("Registered agenda for brand: %s, timezone: %s", brand.getSlugName(), brand.getTimeZone());
-                            });
-                });
+    @Inject
+    public StreamAgendaService(BrandPool brandPool) {
+        this.brandPool = brandPool;
     }
 
-    public Uni<StreamAgenda> buildRadioStreamAgenda(UUID brandId, UUID scriptId, IUser user) {
+    public Uni<ILiveAgenda> buildLiveAgenda(String brand, IUser user) {
+        return brandPool.initializeRadio(brand)
+                .onFailure().invoke(f ->
+                        brandPool.get(brand)
+                                .subscribe().with(s -> {
+                                    if (s != null) s.setStatus(StreamStatus.SYSTEM_ERROR);
+                                })
+                );
+    }
+
+    public Uni<StreamAgenda> buildLiveAgenda(UUID brandId, UUID scriptId, IUser user) {
         return brandService.getById(brandId)
                 .chain(sourceBrand ->
                         scriptService.getById(scriptId, user)
@@ -116,7 +111,12 @@ public class StreamAgendaService {
             return Uni.createFrom().item(schedule);
         }
 
-        LocalDateTime sceneStartTime = brandNow;
+        LocalDateTime todayAt6 = brandNow.toLocalDate().atTime(6, 0);
+        LocalDateTime broadcastDayStart = brandNow.isBefore(todayAt6) ? todayAt6 : todayAt6.plusDays(1);
+        LocalTime firstSceneTime = timeSlots.getFirst().startTime();
+        LocalDateTime todayFirstScene = broadcastDayStart.toLocalDate().atTime(firstSceneTime);
+        boolean nowIsBeforeFirstScene = brandNow.isBefore(todayFirstScene);
+
         List<Uni<LiveScene>> sceneUnis = new ArrayList<>();
 
         for (int i = 0; i < timeSlots.size(); i++) {
@@ -129,7 +129,18 @@ public class StreamAgendaService {
 
             int finalDurationSeconds = calculateDurationUntilNext(sceneOriginalStart, sceneOriginalEnd);
 
-            LocalDateTime finalSceneStartTime = sceneStartTime;
+            LocalDateTime finalSceneStartTime = broadcastDayStart.toLocalDate().atTime(sceneOriginalStart);
+            if (finalSceneStartTime.isBefore(broadcastDayStart)) {
+                finalSceneStartTime = finalSceneStartTime.plusDays(1);
+            }
+            boolean isLast = (i == timeSlots.size() - 1);
+            if (isLast && nowIsBeforeFirstScene) {
+                LocalDateTime sceneToday = broadcastDayStart.toLocalDate().minusDays(1).atTime(sceneOriginalStart);
+                finalSceneStartTime = brandNow.isBefore(sceneToday)
+                        ? sceneToday.minusDays(1)
+                        : sceneToday;
+            }
+            final LocalDateTime capturedSceneStartTime = finalSceneStartTime;
 
             sceneUnis.add(
                     fetchSongsForSceneWithDuration(sourceBrand, scene, finalDurationSeconds, songSupplier)
@@ -137,7 +148,7 @@ public class StreamAgendaService {
                                 LiveScene entry = new LiveScene(
                                         scene.getId(),
                                         scene.getTitle(),
-                                        finalSceneStartTime,
+                                        capturedSceneStartTime,
                                         finalDurationSeconds,
                                         sceneOriginalStart,
                                         sceneOriginalEnd,
@@ -155,7 +166,7 @@ public class StreamAgendaService {
                                         scene.getTalkativity(),
                                         scene.getIntroPrompts()
                                 );
-                                LocalDateTime songStartTime = finalSceneStartTime;
+                                LocalDateTime songStartTime = capturedSceneStartTime;
                                 for (SoundFragment song : songs) {
                                     PendingSongEntry songEntry = new PendingSongEntry(song, songStartTime);
                                     entry.addSong(songEntry);
@@ -164,7 +175,6 @@ public class StreamAgendaService {
                                 return entry;
                             })
             );
-            sceneStartTime = sceneStartTime.plusSeconds(finalDurationSeconds);
         }
 
         return Uni.join().all(sceneUnis).andFailFast()
@@ -189,7 +199,7 @@ public class StreamAgendaService {
         if (playlistRequest != null && playlistRequest.getSourcing() == WayOfSourcing.GENERATED) {
             return Uni.createFrom().item(List.of());
         }
-        
+
         int maxSongsNeeded = (durationSeconds / 120) + 2;
 
         Uni<List<SoundFragment>> songsPoolUni;

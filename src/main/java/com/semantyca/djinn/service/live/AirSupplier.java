@@ -2,14 +2,18 @@ package com.semantyca.djinn.service.live;
 
 import com.semantyca.core.model.cnst.LanguageTag;
 import com.semantyca.djinn.dto.AiDjStatsDTO;
+import com.semantyca.djinn.dto.LiveContainerDTO;
 import com.semantyca.djinn.dto.LiveRadioStationDTO;
 import com.semantyca.djinn.dto.TtsDTO;
 import com.semantyca.djinn.model.stream.OneTimeStream;
 import com.semantyca.djinn.model.stream.RadioStream;
 import com.semantyca.djinn.service.AiAgentService;
+import com.semantyca.djinn.service.stream.BrandPool;
 import com.semantyca.djinn.util.AiHelperUtils;
 import com.semantyca.mixpla.model.aiagent.TTSSetting;
 import com.semantyca.mixpla.model.brand.AiOverriding;
+import com.semantyca.mixpla.model.cnst.ManagedBy;
+import com.semantyca.mixpla.model.cnst.StreamStatus;
 import com.semantyca.mixpla.model.cnst.StreamType;
 import com.semantyca.mixpla.model.stream.IStream;
 import io.kneo.core.localization.LanguageCode;
@@ -26,11 +30,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class AirSupplier {
     private static final Logger LOGGER = LoggerFactory.getLogger(AirSupplier.class);
 
+    private final BrandPool brandPool;
     private final AiAgentService aiAgentService;
     private final OneTimeStreamSupplier oneTimeStreamSupplier;
     private final RadioStreamSupplier radioStreamSupplier;
@@ -41,20 +47,22 @@ public class AirSupplier {
 
     @Inject
     public AirSupplier(
+            BrandPool brandPool,
             AiAgentService aiAgentService,
             OneTimeStreamSupplier oneTimeStreamSupplier,
             RadioStreamSupplier radioStreamSupplier,
             AiHelperService aiHelperService
     ) {
+        this.brandPool = brandPool;
         this.aiAgentService = aiAgentService;
         this.oneTimeStreamSupplier = oneTimeStreamSupplier;
         this.radioStreamSupplier = radioStreamSupplier;
         this.aiHelperService = aiHelperService;
     }
-/*
+
     public Uni<LiveContainerDTO> getLiveRadioStationInfo(List<StreamStatus> statuses) {
         return Uni.createFrom().item(() ->
-                radioStationPool.getOnlineStationsSnapshot().stream()
+                brandPool.getOnlineStationsSnapshot().stream()
                         .filter(station -> station.getManagedBy() != ManagedBy.ITSELF)
                         .filter(station -> statuses.contains(station.getStatus()))
                         .collect(Collectors.toList())
@@ -85,7 +93,7 @@ public class AirSupplier {
                         return container;
                     });
         });
-    }*/
+    }
 
     private Uni<LiveRadioStationDTO> buildLiveRadioStation(IStream stream) {
         LiveRadioStationDTO liveRadioStation = new LiveRadioStationDTO();

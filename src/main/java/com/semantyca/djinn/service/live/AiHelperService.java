@@ -11,8 +11,6 @@ import com.semantyca.djinn.dto.radiostation.AiOverridingDTO;
 import com.semantyca.djinn.dto.radiostation.BrandDTO;
 import com.semantyca.djinn.service.AiAgentService;
 import com.semantyca.djinn.service.BrandService;
-import com.semantyca.djinn.service.ScriptService;
-import com.semantyca.djinn.service.soundfragment.SoundFragmentService;
 import com.semantyca.mixpla.model.Scene;
 import com.semantyca.mixpla.model.aiagent.AiAgent;
 import com.semantyca.mixpla.model.aiagent.LanguagePreference;
@@ -52,8 +50,6 @@ public class AiHelperService {
 
     private final BrandService brandService;
     private final AiAgentService aiAgentService;
-    private final ScriptService scriptService;
-    private final SoundFragmentService soundFragmentService;
     private final GenreService genreService;
     private final LabelService labelService;
     private final StatsAccumulator statsAccumulator = new StatsAccumulator();
@@ -63,16 +59,12 @@ public class AiHelperService {
     @Inject
     public AiHelperService(
             AiAgentService aiAgentService,
-            ScriptService scriptService,
             BrandService brandService,
-            SoundFragmentService soundFragmentService,
             GenreService genreService,
             LabelService labelService
     ) {
         this.aiAgentService = aiAgentService;
-        this.scriptService = scriptService;
         this.brandService = brandService;
-        this.soundFragmentService = soundFragmentService;
         this.genreService = genreService;
         this.labelService = labelService;
     }
@@ -124,29 +116,6 @@ public class AiHelperService {
                                 container.setRadioStations(stationsList);
                                 return container;
                             });
-                });
-    }
-
-    public Uni<List<BrandSoundFragmentAiDTO>> searchBrandSoundFragmentsForAi(
-            String brandName,
-            String keyword,
-            Integer limit,
-            Integer offset
-    ) {
-        int actualLimit = (limit != null && limit > 0) ? limit : 50;
-        int actualOffset = (offset != null && offset >= 0) ? offset : 0;
-
-        return soundFragmentService.getBrandSoundFragmentsBySimilarity(brandName, keyword, actualLimit, actualOffset)
-                .chain(brandFragments -> {
-                    if (brandFragments == null || brandFragments.isEmpty()) {
-                        return Uni.createFrom().item(Collections.<BrandSoundFragmentAiDTO>emptyList());
-                    }
-
-                    List<Uni<BrandSoundFragmentAiDTO>> aiDtoUnis = brandFragments.stream()
-                            .map(this::mapToBrandSoundFragmentAiDTO)
-                            .collect(Collectors.toList());
-
-                    return Uni.join().all(aiDtoUnis).andFailFast();
                 });
     }
 

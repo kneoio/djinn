@@ -19,6 +19,7 @@ import io.vertx.mutiny.sqlclient.Tuple;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -30,6 +31,7 @@ import static com.semantyca.mixpla.repository.MixplaNameResolver.SOUND_FRAGMENT;
 public class SoundFragmentRepository extends SoundFragmentRepositoryAbstract {
     private static final EntityData entityData = MixplaNameResolver.create().getEntityNames(SOUND_FRAGMENT);
     private final SoundFragmentQueryBuilder queryBuilder;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     public SoundFragmentRepository() {
         super();
@@ -171,4 +173,20 @@ public class SoundFragmentRepository extends SoundFragmentRepositoryAbstract {
                 .concatenate()
                 .collect().asList();
     }
+
+    public Uni<List<SoundFragment>> getBrandSongsRandomPage(UUID brandId, PlaylistItemType type) {
+        int limit = 200;
+        int offset = secureRandom.nextInt(20) * limit;
+        SoundFragmentBrandRepository brandRepository =
+                new SoundFragmentBrandRepository(client, mapper, rlsRepository);
+
+        return brandRepository.getBrandSongs(brandId, type, limit, offset);
+    }
+
+
+    public Uni<List<SoundFragment>> getBrandSongs(UUID brandId, PlaylistItemType fragmentType) {
+        SoundFragmentBrandRepository brandRepository = new SoundFragmentBrandRepository(client, mapper, rlsRepository);
+        return brandRepository.getBrandSongs(brandId, fragmentType, 200, 0);
+    }
+
 }

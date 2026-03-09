@@ -1,5 +1,6 @@
 package com.semantyca.djinn.model.stream;
 
+import com.semantyca.djinn.service.stream.FireReason;
 import com.semantyca.mixpla.model.PlaylistRequest;
 import com.semantyca.mixpla.model.Scene;
 import com.semantyca.mixpla.model.ScenePrompt;
@@ -49,6 +50,8 @@ public class LiveScene {
     private LocalDateTime actualEndTime;
     @Setter
     private LocalDateTime lastRunDate;
+    @Setter
+    private FireReason fireReason;
 
     public LiveScene(Scene scene, LocalDateTime scheduledStartTime) {
         this.sceneId = scene.getId();

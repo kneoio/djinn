@@ -33,37 +33,35 @@ public class AgendaTicker {
             return;
         }
 
-        LocalDateTime now = LocalDateTime.now();
-
         agendas.forEach((key, agenda) -> {
             String[] parts = key.split(":", 2);
             String brand = parts[0];
             ZoneId zoneId = agenda.getTimeZone() != null ? agenda.getTimeZone() : ZoneId.of("UTC");
-            ZonedDateTime nowInZone = ZonedDateTime.now(zoneId);
-            LocalDateTime nowLocal = nowInZone.toLocalDateTime();
+            LocalDateTime nowLocal = ZonedDateTime.now(zoneId).toLocalDateTime();
 
             agenda.getLiveScenes().forEach(scene -> {
-                if (isSceneDue(scene, nowLocal)) {
-                    processScene(brand, key, scene);
-                }
+                if (scene.getScheduledStartTime() == null) return;
+                if (scene.getSentToQueueAt() != null) return;
+
+                LocalDateTime start = scene.getScheduledStartTime();
+                LocalDateTime end = start.plusSeconds(scene.getDurationSeconds());
+                boolean withinWindow = !nowLocal.isBefore(start) && nowLocal.isBefore(end);
+                LOGGER.infof("Checking scene: %s, start: %s, end: %s, nowLocal: %s",
+                        scene.getSceneTitle(), start, end, nowLocal);
+                if (!withinWindow) return;
+
+                long lagSeconds = Duration.between(start, nowLocal).getSeconds();
+                FireReason reason = lagSeconds < 30 ? FireReason.ON_TIME : FireReason.REBOOT;
+                processScene(brand, key, scene, reason);
             });
         });
     }
 
-    private boolean isSceneDue(LiveScene scene, LocalDateTime now) {
-        LocalDateTime startTime = scene.getScheduledStartTime();
-        if (startTime == null) {
-            return false;
-        }
-
-        // Check if now is within 10 seconds of scene start time
-        long secondsDiff = Math.abs(Duration.between(now, startTime).getSeconds());
-        return secondsDiff < 10;
-    }
-
-    private void processScene(String brand, String agendaKey, LiveScene scene) {
-        LOGGER.infof("Processing scene '%s' for brand: %s, agenda: %s", scene.getSceneTitle(), brand, agendaKey);
+    private void processScene(String brand, String agendaKey, LiveScene scene, FireReason reason) {
+        LOGGER.infof("Processing scene '%s' for brand: %s, agenda: %s, reason: %s",
+                scene.getSceneTitle(), brand, agendaKey, reason);
         scene.setSentToQueueAt(LocalDateTime.now());
+        scene.setFireReason(reason);
 
         for (PendingSongEntry songEntry : scene.getSongs()) {
             AddToQueueDTO dto = new AddToQueueDTO();

@@ -1,6 +1,6 @@
 package com.semantyca.djinn.rest;
 
-import com.semantyca.djinn.service.stream.StreamAgendaManager;
+import com.semantyca.djinn.service.stream.BrandPool;
 import com.semantyca.djinn.service.stream.StreamAgendaService;
 import io.kneo.core.model.user.SuperUser;
 import io.vertx.core.http.HttpMethod;
@@ -20,7 +20,7 @@ public class CommandResource {
     StreamAgendaService streamAgendaService;
 
     @Inject
-    StreamAgendaManager agendaManager;
+    BrandPool brandPool;
 
     public void setupRoutes(Router router) {
         String path = "/command";
@@ -31,19 +31,23 @@ public class CommandResource {
     
     private void getAgendas(RoutingContext rc) {
         JsonObject agendasJson = new JsonObject();
-        agendaManager.getAll().forEach((key, agenda) -> {
-            JsonObject agendaJson = new JsonObject()
-                    .put("key", key)
-                    .put("createdAt", agenda.getCreatedAt().toString())
-                    .put("totalScenes", agenda.getLiveScenes().size())
-                    .put("scenes", agenda.getLiveScenes().stream().map(scene -> new JsonObject()
-                            .put("id", scene.getSceneId().toString())
-                            .put("title", scene.getSceneTitle())
-                            .put("scheduledStartTime", scene.getScheduledStartTime().toString())
-                            .put("durationSeconds", scene.getDurationSeconds())
-                            .put("totalSongs", scene.getSongs().size())
-                    ).collect(java.util.stream.Collectors.toList()));
-            agendasJson.put(key, agendaJson);
+        brandPool.getOnlineStationsSnapshot().forEach(stream -> {
+            if (stream.getStreamAgenda() != null) {
+                String key = stream.getSlugName();
+                var agenda = stream.getStreamAgenda();
+                JsonObject agendaJson = new JsonObject()
+                        .put("key", key)
+                        .put("createdAt", agenda.getCreatedAt().toString())
+                        .put("totalScenes", agenda.getLiveScenes().size())
+                        .put("scenes", agenda.getLiveScenes().stream().map(scene -> new JsonObject()
+                                .put("id", scene.getSceneId().toString())
+                                .put("title", scene.getSceneTitle())
+                                .put("scheduledStartTime", scene.getScheduledStartTime().toString())
+                                .put("durationSeconds", scene.getDurationSeconds())
+                                .put("totalSongs", scene.getSongs().size())
+                        ).collect(java.util.stream.Collectors.toList()));
+                agendasJson.put(key, agendaJson);
+            }
         });
         rc.response()
                 .setStatusCode(200)
@@ -77,16 +81,14 @@ public class CommandResource {
         streamAgendaService.buildRadioStreamAgenda(slugName, SuperUser.build())
                 .subscribe()
                 .with(
-                        agenda -> {
-                            String key = brand + ":" + agenda.getLiveScenes().size();
-                            LOGGER.infof("Agenda built for brand: %s, key: %s, total scenes: %d",
-                                    brand, key, agenda.getLiveScenes().size());
+                        stream -> {
+                            String key = brand + ":" + stream.getStreamAgenda().getTotalScenes();
 
                             JsonObject response = new JsonObject()
                                     .put("success", true)
                                     .put("key", key)
-                                    .put("totalScenes", agenda.getLiveScenes().size())
-                                    .put("createdAt", agenda.getCreatedAt().toString());
+                                    .put("totalScenes", stream.getStreamAgenda().getTotalScenes())
+                                    .put("createdAt", stream.getStreamAgenda().getCreatedAt());
 
                             rc.response()
                                     .setStatusCode(200)

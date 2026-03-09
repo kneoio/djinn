@@ -9,7 +9,6 @@ import com.semantyca.mixpla.model.cnst.AiAgentStatus;
 import com.semantyca.mixpla.model.cnst.ManagedBy;
 import com.semantyca.mixpla.model.cnst.StreamStatus;
 import com.semantyca.mixpla.model.stream.IStream;
-import com.semantyca.mixpla.model.stream.IStreamer;
 import io.kneo.core.localization.LanguageCode;
 import io.kneo.officeframe.cnst.CountryCode;
 import lombok.Getter;
@@ -28,7 +27,7 @@ import java.util.UUID;
 
 @Setter
 @Getter
-public abstract class AbstractStream implements IStream {
+public abstract class AbstractStream implements IStream, ILiveAgenda {
     protected UUID id;
     protected Brand masterBrand;
     protected String slugName;
@@ -36,7 +35,6 @@ public abstract class AbstractStream implements IStream {
     protected StreamStatus status = StreamStatus.OFF_LINE;
     protected List<StatusChangeRecord> statusHistory = new LinkedList<>();
     protected LocalDateTime startTime;
-    protected IStreamer streamManager;
     protected ZoneId timeZone;
     protected long bitRate;
     protected ManagedBy managedBy = ManagedBy.ITSELF;
@@ -50,7 +48,7 @@ public abstract class AbstractStream implements IStream {
     protected ProfileOverriding profileOverriding;
     protected LocalDateTime createdAt;
     protected LocalDateTime expiresAt;
-    protected StreamAgenda streamAgenda;
+    protected StreamAgenda agenda;
     protected AiAgentStatus aiAgentStatus;
     protected long lastAgentContactAt;
     protected LanguageTag broadcastingLanguage;
