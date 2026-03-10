@@ -1,12 +1,13 @@
 package com.semantyca.djinn.service.stream;
 
 import com.semantyca.core.model.cnst.LanguageTag;
+import com.semantyca.djinn.dto.queue.SongInfoDTO;
+import com.semantyca.djinn.dto.queue.SongQueueMessageDTO;
 import com.semantyca.djinn.messaging.QueueSupplier;
 import com.semantyca.djinn.model.stream.LiveScene;
 import com.semantyca.djinn.model.stream.PendingSongEntry;
 import com.semantyca.djinn.service.AiAgentService;
 import com.semantyca.djinn.util.AiHelperUtils;
-import com.semantyca.mixpla.dto.queue.AddToQueueDTO;
 import com.semantyca.mixpla.model.aiagent.AiAgent;
 import com.semantyca.mixpla.model.cnst.MergingType;
 import com.semantyca.mixpla.model.stream.IStream;
@@ -125,32 +126,40 @@ public class SongTicker {
                 .onItem().transformToUniAndConcatenate(uni -> uni)
                 .collect().asList()
                 .chain(introFilePaths -> {
-                    AddToQueueDTO dto = new AddToQueueDTO();
+                    SongQueueMessageDTO dto = new SongQueueMessageDTO();
                     
                     MergingType mergingType = selectMergingType(songs.size());
                     dto.setMergingMethod(mergingType);
+                    dto.setSceneId(scene.getSceneId());
+                    dto.setSceneTitle(scene.getSceneTitle());
                     
                     Map<String, String> filePaths = new HashMap<>();
-                    Map<String, UUID> soundFragments = new HashMap<>();
+                    Map<String, SongInfoDTO> songMap = new HashMap<>();
                     
                     for (int i = 0; i < songs.size(); i++) {
                         PendingSongEntry songEntry = songs.get(i);
                         String introPath = introFilePaths.get(i);
                         
-                        String introKey = i == 0 ? "intro" : "intro" + (i + 1);
-                        String songKey = i == 0 ? "song" : "song" + (i + 1);
+                        String introKey = "intro" + (i + 1);
+                        String songKey = "song" + (i + 1);
                         
                         filePaths.put(introKey, introPath);
-                        soundFragments.put(songKey, songEntry.getSoundFragment().getId());
+                        
+                        SongInfoDTO songInfoDTO = new SongInfoDTO(
+                            songEntry.getSoundFragment().getId(),
+                            songEntry.getSequenceNumber(),
+                            songEntry.getDurationSeconds()
+                        );
+                        songMap.put(songKey, songInfoDTO);
                     }
                     
                     dto.setFilePaths(filePaths);
-                    dto.setSoundFragments(soundFragments);
+                    dto.setSongs(songMap);
                     dto.setPriority(100);
 
                     String uploadId = scene.getSceneId() + ":" + System.currentTimeMillis();
 
-                    return queueSupplier.sendToQueue(brandName, dto, uploadId)
+                    return queueSupplier.sendSongsToQueue(brandName, dto, uploadId)
                             .invoke(() -> {
                                 songs.forEach(song -> sentSongs.add(song.getSoundFragment().getId()));
                                 LOGGER.info("Sent {} songs to queue - brand: {}, scene: {}, mergingType: {}", 
