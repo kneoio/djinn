@@ -160,9 +160,7 @@ public class SongTicker {
                     dto.setSongs(songMap);
                     dto.setPriority(100);
 
-                    String uploadId = scene.getSceneId() + ":" + System.currentTimeMillis();
-
-                    return queueSupplier.sendSongsToQueue(brandName, dto, uploadId)
+                    return queueSupplier.sendSongsToQueue(brandName, dto)
                             .invoke(() -> {
                                 songs.forEach(song -> sentSongs.add(song.getSoundFragment().getId()));
                                 LOGGER.info("Sent {} songs to queue - brand: {}, scene: {}, mergingType: {}, hasIntros: {}", 
