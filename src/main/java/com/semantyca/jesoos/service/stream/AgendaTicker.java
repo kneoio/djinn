@@ -62,14 +62,11 @@ public class AgendaTicker {
 
                 LiveScene nextScene = (i < scenes.size() - 1) ? scenes.get(i + 1) : null;
                 boolean isActive = scene.isActiveAt(nowTime, nextScene != null ? nextScene.getOriginalStartTime() : null);
-                
-                LOGGER.infof("Checking scene: %s, originalStart: %s, originalEnd: %s, nowTime: %s, isActive: %s",
-                        scene.getSceneTitle(), scene.getOriginalStartTime(), 
-                        scene.getOriginalEndTime() != null ? scene.getOriginalEndTime() : (nextScene != null ? nextScene.getOriginalStartTime() : "null"),
-                        nowTime, isActive);
-                
+
+
                 if (!isActive) continue;
 
+                LOGGER.infof("Checking: %s, start: %s, isActive: %s", scene.getSceneTitle(), scene.getOriginalStartTime(), isActive);
                 long lagSeconds = calculateLagSeconds(nowTime, scene.getOriginalStartTime());
                 FireReason reason = lagSeconds < 30 ? FireReason.ON_TIME : FireReason.REBOOT;
                 processScene(brand, key, scene, reason);

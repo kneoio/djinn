@@ -51,7 +51,7 @@ public class SongTicker {
 
     private final Map<String, Set<UUID>> sentSongsTracker = new ConcurrentHashMap<>();
 
-    @Scheduled(every = "5m")
+    @Scheduled(every = "60s")
     void tick() {
         Map<String, LiveScene> activeScenes = scenePool.getAllActiveScenes();
         if (activeScenes.isEmpty()) {
@@ -111,24 +111,31 @@ public class SongTicker {
     ) {
         LanguageTag broadcastingLanguage = AiHelperUtils.selectLanguageByWeight(agent);
 
+        MergingType mergingType = selectMergingType(songs.size());
+        boolean needsIntros = mergingType != MergingType.SONG_ONLY && mergingType != MergingType.SONG_CROSSFADE_SONG;
+
         List<Uni<String>> introUnis = new ArrayList<>();
-        for (PendingSongEntry songEntry : songs) {
-            Uni<String> introUni = introTtsGenerator.generateIntroAudioFile(
-                    scene,
-                    songEntry.getSoundFragment(),
-                    agent,
-                    stream,
-                    broadcastingLanguage
-            );
-            introUnis.add(introUni);
+        if (needsIntros) {
+            for (PendingSongEntry songEntry : songs) {
+                Uni<String> introUni = introTtsGenerator.generateIntroAudioFile(
+                        scene,
+                        songEntry.getSoundFragment(),
+                        agent,
+                        stream,
+                        broadcastingLanguage
+                );
+                introUnis.add(introUni);
+            }
+        } else {
+            for (int i = 0; i < songs.size(); i++) {
+                introUnis.add(Uni.createFrom().nullItem());
+            }
         }
 
         return Uni.join().all(introUnis).andCollectFailures().chain(introFilePaths -> {
                     SongQueueMessageDTO dto = new SongQueueMessageDTO();
                     
                     boolean hasIntros = introFilePaths.stream().anyMatch(path -> path != null);
-                    MergingType mergingType = hasIntros ? selectMergingType(songs.size()) : 
-                            (songs.size() == 1 ? MergingType.SONG_ONLY : MergingType.SONG_CROSSFADE_SONG);
                     
                     dto.setMergingMethod(mergingType);
                     dto.setSceneId(scene.getSceneId());

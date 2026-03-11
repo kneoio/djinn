@@ -21,7 +21,7 @@ public class QueueSupplier {
 
     @Inject
     @Channel("queue-requests")
-    Emitter<Message<byte[]>> songEmitter;
+    Emitter<byte[]> songEmitter;
 
     public Uni<Void> sendSongsToQueue(String brandSlug, SongQueueMessageDTO message) {
         message.setBrandSlug(brandSlug);
@@ -29,19 +29,20 @@ public class QueueSupplier {
 
         return Uni.createFrom().item(() -> {
                     try {
+                        byte[] bytes = objectMapper.writeValueAsBytes(message);
                         OutgoingRabbitMQMetadata metadata = new OutgoingRabbitMQMetadata.Builder()
                                 .withRoutingKey(brandSlug)
                                 .build();
-                        byte[] bytes = objectMapper.writeValueAsBytes(message);
-                        return Message.of(bytes).addMetadata(metadata);
+                        Message<byte[]> msg = Message.of(bytes).addMetadata(metadata);
+                        songEmitter.send(msg);
+                        LOGGER.info("Sent to queue - brand: {}, scene: {}, messageId: {}",
+                                brandSlug, message.getSceneTitle(), message.getMessageId());
+                        return null;
                     } catch (Exception e) {
-                        throw new RuntimeException("Failed to serialize message", e);
+                        LOGGER.error("Failed to send - brand: {}, messageId: {}",
+                                brandSlug, message.getMessageId(), e);
+                        throw new RuntimeException("Failed to send message", e);
                     }
-                })
-                .chain(msg -> Uni.createFrom().completionStage(songEmitter.send(msg)))
-                .onItem().invoke(() -> LOGGER.info("Sent to queue - brand: {}, scene: {}, messageId: {}",
-                        brandSlug, message.getSceneTitle(), message.getMessageId()))
-                .onFailure().invoke(e -> LOGGER.error("Failed to send - brand: {}, messageId: {}",
-                        brandSlug, message.getMessageId(), e));
+                });
     }
 }
