@@ -32,3 +32,4 @@ src/main/resources/application-prod.properties
 /temp/
 /temp_soundfragments_storage/
 /controller-uploads/
+*.ps1

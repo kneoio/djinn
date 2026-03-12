@@ -20,7 +20,7 @@ public class QueueSupplier {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Inject
-    @Channel("queue-requests")
+    @Channel("streaming")
     Emitter<byte[]> songEmitter;
 
     public Uni<Void> sendSongsToQueue(String brandSlug, SongQueueMessageDTO message) {
@@ -28,20 +28,19 @@ public class QueueSupplier {
         message.setMessageId(UUID.randomUUID());
 
         return Uni.createFrom().item(() -> {
-                    try {
-                        byte[] bytes = objectMapper.writeValueAsBytes(message);
-                        OutgoingRabbitMQMetadata metadata = new OutgoingRabbitMQMetadata.Builder()
-                                .withRoutingKey(brandSlug)
-                                .build();
-                        Message<byte[]> msg = Message.of(bytes).addMetadata(metadata);
-                        songEmitter.send(msg);
-                        LOGGER.info("Sent to queue, brand: {},  messageId: {}", brandSlug,  message.getMessageId());
-                        return null;
-                    } catch (Exception e) {
-                        LOGGER.error("Failed to send - brand: {}, messageId: {}",
-                                brandSlug, message.getMessageId(), e);
-                        throw new RuntimeException("Failed to send message", e);
-                    }
-                });
+            try {
+                byte[] bytes = objectMapper.writeValueAsBytes(message);
+                OutgoingRabbitMQMetadata metadata = new OutgoingRabbitMQMetadata.Builder()
+                        .withRoutingKey("streaming.event")
+                        .build();
+                Message<byte[]> msg = Message.of(bytes).addMetadata(metadata);
+                songEmitter.send(msg);
+                LOGGER.info("Sent to queue, brand: {}, messageId: {}", brandSlug, message.getMessageId());
+                return null;
+            } catch (Exception e) {
+                LOGGER.error("Failed to send - brand: {}, messageId: {}", brandSlug, message.getMessageId(), e);
+                throw new RuntimeException("Failed to send message", e);
+            }
+        });
     }
 }

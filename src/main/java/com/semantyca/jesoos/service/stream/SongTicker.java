@@ -153,8 +153,6 @@ public class SongTicker {
         return Uni.join().all(introUnis).andCollectFailures().chain(introFilePaths -> {
                     SongQueueMessageDTO dto = new SongQueueMessageDTO();
 
-                    boolean hasIntros = introFilePaths.stream().anyMatch(Objects::nonNull);
-
                     dto.setMergingMethod(mergingType);
                     dto.setSceneId(scene.getSceneId());
                     dto.setSceneTitle(scene.getSceneTitle());

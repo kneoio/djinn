@@ -209,7 +209,7 @@ public class IntroTtsGenerator {
         return ttsClient.textToSpeech(finalText, voiceId, modelId, language)
                 .map(audioBytes -> {
                     try {
-                        Path uploadsDir = Paths.get(config.getPathUploads(), "intro-tts", "temp");
+                        Path uploadsDir = Path.of(config.getPathUploads()).toAbsolutePath().resolve("intro-tts").resolve("temp");
                         Files.createDirectories(uploadsDir);
 
                         String fileName = "intro_" + UUID.randomUUID() + ".mp3";

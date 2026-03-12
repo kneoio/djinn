@@ -7,5 +7,5 @@ WORKDIR /app
 COPY target/jesoos-*-runner.jar app.jar
 RUN chown jesoos:jesoos app.jar
 USER jesoos
-EXPOSE 8080 38708
+EXPOSE 8080 38797
 ENTRYPOINT ["java", "--add-opens=java.base/java.lang=ALL-UNNAMED", "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "-jar", "app.jar"]
